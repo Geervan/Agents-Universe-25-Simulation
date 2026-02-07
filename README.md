@@ -1,73 +1,47 @@
-# React + TypeScript + Vite
+# Agents-Universe-25-Simulation
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React-based agentic simulation based on John Calhoun's "Universe 25" experiment. The project simulates a colony of digital agents interacting on a grid, managing resources, trading in a marketplace, and responding to environmental stressors like crowding and social contagion.
 
-Currently, two official plugins are available:
+## About the Project
+This simulation recreates the behavioral dynamics of the original mouse experiment in a digital environment. Each agent is an independent process with its own stats (CPU/Energy, Money, Stability, RAM). 
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+As the population grows, agents experience "crowding stress" which affects their behavior—leading to aggression, withdrawal (the "Beautiful Ones" syndrome), and reduced fertility.
 
-## React Compiler
+### Key Features
+- **Deterministic Engine**: A local kernel managing 100+ concurrent processes.
+- **LLM Integration**: Uses Gemini 2.5 Flash to drive high-level agent reasoning and decision-making.
+- **Dynamic Marketplace**: A simulated economy where agents buy energy and sell data tokens to survive.
+- **Visual Analytics**: Real-time grid visualization, population graphs, and agent-specific thought logs.
+- **Behavioral Sink Models**: Implementation of social contagion, territoriality, and chronic stress effects.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
+- **Framework**: React + Vite
+- **Language**: TypeScript
+- **AI**: Google Gemini API (Generative AI SDK)
+- **State Management**: React Hooks + Custom Engine Kernel
+- **Styling**: Vanilla CSS (Cyber/Terminal aesthetic)
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. **Clone & Install**
+   ```bash
+   git clone https://github.com/Geervan/Agents-Universe-25-Simulation.git
+   cd Agents-Universe-25-Simulation
+   npm install
+   ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+2. **API Key**
+   Create a `.env` file in the root and add your Gemini API key:
+   ```env
+   VITE_GEMINI_API_KEY=your_key_here
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+3. **Development**
+   ```bash
+   npm run dev
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Engine Overview
+- `Kernel.ts`: Handles the tick loop, grid management, and marketplace logic.
+- `Process.ts`: Manages individual agent states, metabolism, and behavioral logic.
+- `AgentAI.ts`: Interfaces with Gemini for reasoning with a global rate-limiting cache.
