@@ -47,9 +47,13 @@ export class Process {
             money: parentStats ? parentStats.money / 2 : 10
         };
 
-        // Randomize traits for variation
-        this.aggressiveness = Math.random();
-        this.efficiency = 0.1 + (Math.random() * 0.2);
+        // Randomize traits for variation - REDUCED BASE AGGRESSION
+        // Range: [0 - 0.8]. Average: 0.4.
+        // Violence threshold is > 0.6, so ~25% of agents have the POTENTIAL for violence
+        this.aggressiveness = Math.random() * 0.8;
+
+        // Lower metabolism so they don't starve so fast
+        this.efficiency = 0.05 + (Math.random() * 0.1);
     }
 
     /**
@@ -107,7 +111,7 @@ export class Process {
         if (aiRec) {
             // AI REPRODUCE also requires a partner
             const fertilePartners = neighbors.filter(n =>
-                !n.isWithdrawn && n.stats.cpu > 40 && n.stats.stability > 50 && n.stats.money > 20
+                !n.isWithdrawn && n.stats.cpu > 30 && n.stats.stability > 40
             );
 
             if (aiRec === 'REPRODUCE' && this.stats.cpu > 50 && availableRam > 0 && this.stats.money > 40 && this.stats.stability > this.fertilityThreshold && fertilePartners.length > 0) {
@@ -178,11 +182,11 @@ export class Process {
         // Must have: energy, space, wealth, stability, AND a fertile neighbor
         else if (this.stats.cpu > 50 && availableRam > 0 && this.stats.money > 40 && this.stats.stability > this.fertilityThreshold) {
             // Find a fertile partner nearby (not withdrawn, has decent stats)
+            // Partner doesn't need money, just health (CPU > 30) and basic stability (> 40)
             const fertilePartners = neighbors.filter(n =>
                 !n.isWithdrawn &&
-                n.stats.cpu > 40 &&
-                n.stats.stability > 50 &&
-                n.stats.money > 20
+                n.stats.cpu > 30 &&
+                n.stats.stability > 40
             );
 
             if (fertilePartners.length > 0) {
