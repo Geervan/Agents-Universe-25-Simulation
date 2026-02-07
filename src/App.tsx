@@ -138,7 +138,7 @@ function App() {
     setStats({ processCount: 0, tick: 0, totalMoney: 0, events: [] as string[] });
     setAiThoughts([]);
     setSelectedProcessId(null);
-    setIsRunning(true);
+    setIsRunning(false); // Start paused so user can inject agents first
   }, []);
 
   return (
@@ -171,10 +171,10 @@ function App() {
             <div style={{ borderRight: '2px solid #333', paddingRight: '20px' }}>
               <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '5px' }}>SYSTEM STATUS</div>
               <div style={{
-                color: isRunning ? 'var(--color-phosphor)' : '#888',
+                color: isRunning ? '#00ff41' : '#ff4444',
                 fontSize: '1.5rem',
                 fontWeight: 'bold',
-                textShadow: isRunning ? '0 0 10px var(--color-phosphor)' : 'none'
+                textShadow: 'none'
               }}>
                 {isRunning ? '● ONLINE' : '○ STANDBY'}
               </div>

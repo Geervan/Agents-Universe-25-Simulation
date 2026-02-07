@@ -41,3 +41,30 @@ export type Action = {
     targetPos?: Vector2;
     payload?: any; // For trade details
 };
+
+// === POLITICS SYSTEM ===
+
+export type SocialRank = 'ALPHA' | 'BETA' | 'OMEGA';
+
+export interface Territory {
+    leaderId: string;          // The ALPHA who owns this territory
+    centerX: number;           // Territory center (usually Alpha's home)
+    centerY: number;
+    radius: number;            // Territory radius (typically 4-5 cells)
+    color: string;             // Unique color for visualization
+    memberCount: number;       // How many agents are in this territory
+}
+
+// Predefined territory colors (distinct, vibrant)
+export const TERRITORY_COLORS = [
+    '#ff6b6b',  // Coral Red
+    '#4ecdc4',  // Teal
+    '#ffe66d',  // Yellow
+    '#95e1d3',  // Mint
+    '#f38181',  // Salmon
+    '#aa96da',  // Lavender
+    '#fcbad3',  // Pink
+    '#a8d8ea',  // Sky Blue
+    '#ff9f43',  // Orange
+    '#6c5ce7',  // Purple
+];

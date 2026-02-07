@@ -1,5 +1,6 @@
 import { Process } from './Process';
-import type { Action, ProcessStats, Vector2 } from './types';
+import type { Action, ProcessStats, Vector2, Territory } from './types';
+import { TERRITORY_COLORS } from './types';
 import { Marketplace } from './Marketplace';
 import { getLastThought } from './AgentAI';
 
@@ -12,6 +13,9 @@ export class Kernel {
     public marketplace: Marketplace; // THE ECONOMY
     public events: string[] = [];
     public logImportantOnly: boolean = true;
+
+    // === POLITICS ===
+    public territories: Map<string, Territory> = new Map(); // Key = Alpha's ID
 
     // Session analytics
     public session = {
@@ -298,8 +302,91 @@ export class Kernel {
             this.session.populationTimeline.push({ tick: this.tickCount, pop, avgStability: sessionAvgStab });
         }
 
-        if (pop === 0 && this.session.extinctionTick === null && this.session.totalBirths > 0) {
+        // Detect extinction - population 0 after simulation started (peakPop > 0 means we had agents)
+        if (pop === 0 && this.session.extinctionTick === null && this.session.peakPopulation > 0) {
             this.session.extinctionTick = this.tickCount;
+            this.log('EXTINCTION: All agents have died', { important: true });
+        }
+
+        // 5. UPDATE TERRITORIES (every 20 ticks to reduce overhead)
+        if (this.tickCount % 20 === 0) {
+            this.updateTerritories();
+        }
+    }
+
+    /**
+     * Rebuild territory map based on current ALPHA population.
+     * Each ALPHA claims a 5-cell radius around their home position.
+     */
+    private updateTerritories() {
+        // Clear old territories
+        this.territories.clear();
+
+        // Find all ALPHAs and create territories
+        let colorIndex = 0;
+        const alphas: Process[] = [];
+
+        this.processes.forEach(proc => {
+            if (proc.socialRank === 'ALPHA') {
+                alphas.push(proc);
+            }
+        });
+
+        // Sort ALPHAs by power (money + stability) - strongest get first pick
+        alphas.sort((a, b) =>
+            (b.stats.money + b.stats.stability) - (a.stats.money + a.stats.stability)
+        );
+
+        // Create territories for each ALPHA
+        for (const alpha of alphas) {
+            const territory: Territory = {
+                leaderId: alpha.stats.id,
+                centerX: alpha.homePosition.x,
+                centerY: alpha.homePosition.y,
+                radius: 5,
+                color: TERRITORY_COLORS[colorIndex % TERRITORY_COLORS.length],
+                memberCount: 0
+            };
+            this.territories.set(alpha.stats.id, territory);
+            alpha.territoryId = alpha.stats.id; // Alpha owns their own territory
+            colorIndex++;
+        }
+
+        // Assign all agents to territories based on proximity
+        this.processes.forEach(proc => {
+            if (proc.socialRank === 'ALPHA') return; // Already assigned
+
+            let closestAlpha: string | null = null;
+            let closestDist = Infinity;
+
+            this.territories.forEach((territory, alphaId) => {
+                const dist = Math.abs(proc.position.x - territory.centerX)
+                    + Math.abs(proc.position.y - territory.centerY);
+                if (dist <= territory.radius && dist < closestDist) {
+                    closestDist = dist;
+                    closestAlpha = alphaId;
+                }
+            });
+
+            proc.territoryId = closestAlpha;
+
+            if (closestAlpha) {
+                const territory = this.territories.get(closestAlpha);
+                if (territory) {
+                    territory.memberCount++;
+
+                    // SUBJUGATION STRESS: Non-alphas in another's territory lose stability
+                    // only if they're very poor (can't "pay tribute")
+                    if (proc.stats.money < 30) {
+                        proc.stats.stability -= 0.2; // Subtle oppression (reduced impact)
+                    }
+                }
+            }
+        });
+
+        // Log significant territory changes
+        if (alphas.length > 0 && this.tickCount % 100 === 0) {
+            this.log(`POLITICS: ${alphas.length} Alpha(s) control territories`, { important: true });
         }
     }
 

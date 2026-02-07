@@ -76,6 +76,34 @@ const ServerVisualizer: React.FC<ServerVisualizerProps & { onProcessSelect: (id:
             const offsetX = 20;
             const offsetY = 20;
 
+            // First pass: Draw territory backgrounds for ALL cells
+            for (let y = 0; y < kernel.height; y++) {
+                for (let x = 0; x < kernel.width; x++) {
+                    const px = offsetX + x * (cellSize + gap);
+                    const py = offsetY + y * (cellSize + gap);
+
+                    // Check if this cell is within any territory
+                    let inTerritory = false;
+                    kernel.territories.forEach((territory) => {
+                        const dist = Math.abs(x - territory.centerX) + Math.abs(y - territory.centerY);
+                        if (dist <= territory.radius) {
+                            // Draw territory background with alpha based on distance from center
+                            const alpha = 0.15 - (dist / territory.radius) * 0.1;
+                            ctx.fillStyle = territory.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+                            ctx.fillRect(px, py, cellSize - 2, cellSize - 2);
+                            inTerritory = true;
+                        }
+                    });
+
+                    // Empty cells outside territories
+                    if (!inTerritory) {
+                        ctx.fillStyle = '#181818';
+                        ctx.fillRect(px, py, cellSize - 2, cellSize - 2);
+                    }
+                }
+            }
+
+            // Second pass: Draw agents
             for (let y = 0; y < kernel.height; y++) {
                 for (let x = 0; x < kernel.width; x++) {
                     const pid = kernel.grid[y][x];
@@ -85,12 +113,6 @@ const ServerVisualizer: React.FC<ServerVisualizerProps & { onProcessSelect: (id:
                     if (pid) {
                         const proc = kernel.processes.get(pid);
                         if (proc) {
-                            // STABILITY HEATMAP BACKGROUND
-                            const stability = proc.stats.stability;
-                            const hue = (stability / 100) * 120;
-                            ctx.fillStyle = `hsla(${hue}, 70%, 15%, 0.6)`;
-                            ctx.fillRect(px, py, cellSize - 2, cellSize - 2);
-
                             const cx = px + cellSize / 2 - 1;
                             const cy = py + cellSize / 2 - 1;
                             const r = 4;
@@ -99,8 +121,21 @@ const ServerVisualizer: React.FC<ServerVisualizerProps & { onProcessSelect: (id:
                             ctx.shadowBlur = 0;
                             ctx.shadowColor = 'transparent';
 
-                            // VISUAL BASED ON STATE
-                            if (proc.stats.cpu < 20) {
+                            // VISUAL BASED ON STATE + RANK
+                            if (proc.socialRank === 'ALPHA') {
+                                // ALPHA - White diamond with glow (leader)
+                                ctx.fillStyle = '#ffffff';
+                                ctx.shadowColor = '#ffffff';
+                                ctx.shadowBlur = 6;
+                                ctx.beginPath();
+                                ctx.moveTo(cx, cy - r - 1);     // Top
+                                ctx.lineTo(cx + r + 1, cy);     // Right
+                                ctx.lineTo(cx, cy + r + 1);     // Bottom
+                                ctx.lineTo(cx - r - 1, cy);     // Left
+                                ctx.closePath();
+                                ctx.fill();
+                                ctx.shadowBlur = 0;
+                            } else if (proc.stats.cpu < 20) {
                                 // STARVING - Red hollow circle
                                 ctx.strokeStyle = '#ff3300';
                                 ctx.beginPath();
@@ -115,8 +150,17 @@ const ServerVisualizer: React.FC<ServerVisualizerProps & { onProcessSelect: (id:
                                 ctx.moveTo(cx + r, cy - r);
                                 ctx.lineTo(cx - r, cy + r);
                                 ctx.stroke();
+                            } else if (proc.socialRank === 'BETA') {
+                                // BETA - Orange triangle (middle class)
+                                ctx.fillStyle = '#ff9f43';
+                                ctx.beginPath();
+                                ctx.moveTo(cx, cy - r);          // Top
+                                ctx.lineTo(cx + r, cy + r);      // Bottom right
+                                ctx.lineTo(cx - r, cy + r);      // Bottom left
+                                ctx.closePath();
+                                ctx.fill();
                             } else if (proc.stats.money > 60) {
-                                // WEALTHY - Gold filled circle
+                                // WEALTHY OMEGA - Gold filled circle
                                 ctx.fillStyle = '#ffcc00';
                                 ctx.shadowColor = '#ffcc00';
                                 ctx.shadowBlur = 8;
@@ -125,7 +169,7 @@ const ServerVisualizer: React.FC<ServerVisualizerProps & { onProcessSelect: (id:
                                 ctx.fill();
                                 ctx.shadowBlur = 0;
                             } else {
-                                // NORMAL - Cyan square
+                                // NORMAL OMEGA - Cyan square
                                 ctx.fillStyle = '#00ccaa';
                                 ctx.fillRect(cx - r + 1, cy - r + 1, r * 2 - 2, r * 2 - 2);
                             }
@@ -137,10 +181,6 @@ const ServerVisualizer: React.FC<ServerVisualizerProps & { onProcessSelect: (id:
                                 ctx.strokeRect(px - 1, py - 1, cellSize, cellSize);
                             }
                         }
-                    } else {
-                        // Empty cell
-                        ctx.fillStyle = '#181818';
-                        ctx.fillRect(px, py, cellSize - 2, cellSize - 2);
                     }
                 }
             }
@@ -188,6 +228,12 @@ const ServerVisualizer: React.FC<ServerVisualizerProps & { onProcessSelect: (id:
                     <div>💰 Wealth: {Math.round(hoveredAgent.stats.money)} CR</div>
                     <div>🧠 Stability: <span style={{ color: hoveredAgent.stats.stability < 50 ? '#f80' : '#0c0' }}>{Math.round(hoveredAgent.stats.stability)}%</span></div>
                     <div>📅 Age: {hoveredAgent.stats.cycle} cycles</div>
+                    <div>👑 Rank: <span style={{
+                        color: hoveredAgent.socialRank === 'ALPHA' ? '#fff'
+                            : hoveredAgent.socialRank === 'BETA' ? '#ff9f43'
+                                : '#00ccaa',
+                        textShadow: hoveredAgent.socialRank === 'ALPHA' ? '0 0 6px #fff' : 'none'
+                    }}>{hoveredAgent.socialRank}</span></div>
 
                     {/* AI THOUGHT BUBBLE */}
                     {hoveredAgent.lastThought && (

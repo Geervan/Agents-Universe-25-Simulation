@@ -1,5 +1,5 @@
 import { ProcessState } from './types';
-import type { Action, ProcessStats, Vector2, ActionType } from './types';
+import type { Action, ProcessStats, Vector2, ActionType, SocialRank } from './types';
 import { agentThink, isAIReady, setLastThought, getLastThought } from './AgentAI';
 
 export class Process {
@@ -15,6 +15,10 @@ export class Process {
     public homePosition: Vector2; // Territorial memory — where they were born
     public fertilityThreshold: number; // Rises permanently under chronic stress
     public isWithdrawn: boolean; // "Beautiful One" — actively avoids society
+
+    // === POLITICS ===
+    public socialRank: SocialRank = 'OMEGA';  // Starts at bottom, can rise
+    public territoryId: string | null = null; // Which Alpha's territory are we in?
 
     public lastAction: ActionType | null = null;
     public lastThought: string | null = null; // AI reasoning
@@ -101,7 +105,12 @@ export class Process {
         const aiRec = this.getAIRecommendation();
 
         if (aiRec) {
-            if (aiRec === 'REPRODUCE' && this.stats.cpu > 50 && availableRam > 0 && this.stats.money > 40 && this.stats.stability > this.fertilityThreshold) {
+            // AI REPRODUCE also requires a partner
+            const fertilePartners = neighbors.filter(n =>
+                !n.isWithdrawn && n.stats.cpu > 40 && n.stats.stability > 50 && n.stats.money > 20
+            );
+
+            if (aiRec === 'REPRODUCE' && this.stats.cpu > 50 && availableRam > 0 && this.stats.money > 40 && this.stats.stability > this.fertilityThreshold && fertilePartners.length > 0) {
                 this.state = ProcessState.ALLOCATING;
                 action = { type: 'FORK' };
             } else if (aiRec === 'ATTACK' && neighbors.length > 0) {
@@ -144,15 +153,44 @@ export class Process {
         // Only truly unstable + aggressive agents choose violence
         else if (this.stats.stability < 35 && this.aggressiveness > 0.6 && neighbors.length > 0) {
             this.state = ProcessState.DDOS;
-            const victim = neighbors.sort((a, b) => a.stats.cpu - b.stats.cpu)[0]; // Find weakest
+
+            // PRIORITY TARGETING: ALPHAs are high-value targets (the powerful attract aggression)
+            // This aligns with Universe-25 where dominant males became targets
+            const alphaTargets = neighbors.filter(n => n.socialRank === 'ALPHA');
+            const betaTargets = neighbors.filter(n => n.socialRank === 'BETA');
+
+            let victim;
+            if (alphaTargets.length > 0) {
+                // Attack the richest ALPHA (takedown the powerful)
+                victim = alphaTargets.sort((a, b) => b.stats.money - a.stats.money)[0];
+            } else if (betaTargets.length > 0 && Math.random() > 0.5) {
+                // 50% chance to attack BETA if no ALPHAs
+                victim = betaTargets.sort((a, b) => b.stats.money - a.stats.money)[0];
+            } else {
+                // Fall back to attacking the weakest (easy prey)
+                victim = neighbors.sort((a, b) => a.stats.cpu - b.stats.cpu)[0];
+            }
+
             action = { type: 'TERMINATE_PROCESS', targetId: victim.stats.id };
         }
 
-        // 3. REPRODUCTION (The Imperative) - Rich + Stable = Babies
+        // 3. REPRODUCTION (The Imperative) - Requires a PARTNER nearby!
+        // Must have: energy, space, wealth, stability, AND a fertile neighbor
         else if (this.stats.cpu > 50 && availableRam > 0 && this.stats.money > 40 && this.stats.stability > this.fertilityThreshold) {
-            this.state = ProcessState.ALLOCATING;
-            action = { type: 'FORK' };
-            // Reproduction costs resources
+            // Find a fertile partner nearby (not withdrawn, has decent stats)
+            const fertilePartners = neighbors.filter(n =>
+                !n.isWithdrawn &&
+                n.stats.cpu > 40 &&
+                n.stats.stability > 50 &&
+                n.stats.money > 20
+            );
+
+            if (fertilePartners.length > 0) {
+                // Found a partner! Reproduce
+                this.state = ProcessState.ALLOCATING;
+                action = { type: 'FORK' };
+            }
+            // No partner = no reproduction (isolation is deadly)
         }
 
         // 4. WEALTHY BEHAVIOR (money >= 60)
@@ -291,8 +329,27 @@ export class Process {
             this.stats.cpu += this.efficiency * 0.5; // Partially offset metabolism — they conserve energy
         }
 
+        // === UPDATE SOCIAL RANK ===
+        // Rank is based on "power score" = wealth + stability + priority bonus
+        const powerScore = this.stats.money + this.stats.stability + (this.stats.priority * 5);
+
+        if (this.isWithdrawn) {
+            // Withdrawn agents are always OMEGA - they've given up on society
+            this.socialRank = 'OMEGA';
+        } else if (powerScore >= 300 && this.stats.stability >= 85 && this.stats.money >= 120) {
+            // ALPHA: True elite - extremely wealthy, very stable
+            // Should be VERY rare (1-3 in entire population)
+            this.socialRank = 'ALPHA';
+        } else if (powerScore >= 150 && this.stats.stability >= 60 && this.stats.money >= 50) {
+            // BETA: Upper-middle class 
+            this.socialRank = 'BETA';
+        } else {
+            // OMEGA: Everyone else - the majority
+            this.socialRank = 'OMEGA';
+        }
+
         // === CLAMP STATS ===
         this.stats.stability = Math.min(100, Math.max(0, this.stats.stability));
-        this.stats.cpu = Math.max(0, this.stats.cpu);
+        this.stats.cpu = Math.min(100, Math.max(0, this.stats.cpu));
     }
 }

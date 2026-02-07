@@ -105,8 +105,16 @@ const AgentInspector: React.FC<AgentInspectorProps> = ({ process, onClose }) => 
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontSize: '0.7rem', color: '#888' }}>STATUS</div>
-                    <div style={{ fontSize: '1.5rem' }}>{stats.priority}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#888' }}>SOCIAL RANK</div>
+                    <div style={{
+                        fontSize: '1.2rem',
+                        color: process.socialRank === 'ALPHA' ? '#ffffff'
+                            : process.socialRank === 'BETA' ? '#ff9f43'
+                                : '#00ccaa',
+                        textShadow: process.socialRank === 'ALPHA' ? '0 0 8px #fff' : 'none'
+                    }}>
+                        {process.socialRank}
+                    </div>
                 </div>
             </div>
 
